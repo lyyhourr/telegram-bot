@@ -12,5 +12,9 @@
   },
   "ai": {
     "binding": "AI"
+  },
+  "triggers": {
+    // every 30 minutes, Monday (1) to Saturday (6)
+    "crons": ["*/30 * * * 1-6"]
   }
 }

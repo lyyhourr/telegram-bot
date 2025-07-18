@@ -1,6 +1,6 @@
 import { Hono } from "hono";
-import { handleAskCommand, isAskCommand } from "./commands/ask";
-import { handleIdCommand, isIdCommand } from "./commands/id";
+import { ALL_COMMANDS } from "./commands";
+import { scheduled } from "./utils/scheduler";
 
 const app = new Hono<{
   Bindings: CloudflareBindings & {
@@ -26,24 +26,31 @@ app.post("/telegram-webhook", async (c) => {
       return c.text("No message text");
     }
 
-    const text = message.text;
+    const text = message.text.trim();
     const chatId = message.chat.id;
     const threadId = message.message_thread_id;
 
-    if (isIdCommand(text)) {
-      return await handleIdCommand(c, chatId, threadId, TELEGRAM_TOKEN);
+    const command = ALL_COMMANDS.find((cmd) => {
+      if (typeof cmd.match === "string") {
+        return text.toLowerCase().startsWith(cmd.match.toLowerCase());
+      } else {
+        return cmd.match.test(text);
+      }
+    });
+
+    if (!command) {
+      console.log("Message does not match any known command - ignored");
+      return c.text("Ignored (no matching command)");
     }
 
-    if (isAskCommand(text, c.env.BOT_USERNAME)) {
-      return await handleAskCommand(c, text, chatId, threadId, TELEGRAM_TOKEN);
-    }
-
-    console.log("Message does not match any known command - ignored");
-    return c.text("Ignored (no matching command)");
+    return await command.handler(c, text, chatId, TELEGRAM_TOKEN, threadId);
   } catch (e) {
     console.error("Error in webhook handler:", e);
     return c.text("Error", 500);
   }
 });
 
-export default app;
+export default {
+  fetch: app.fetch,
+  scheduled,
+};

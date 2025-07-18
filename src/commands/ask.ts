@@ -1,16 +1,11 @@
 import { sendTelegramMessage } from "../utils/send-tele-msg";
 
-export function isAskCommand(text: string, botUsername: string) {
-  const askCommandRegex = new RegExp(`^\\/ask(@${botUsername})?(\\s|$)`, "i");
-  return askCommandRegex.test(text);
-}
-
 export async function handleAskCommand(
   c: any,
   text: string,
   chatId: number,
-  threadId: number | undefined,
-  token: string
+  token: string,
+  threadId?: number
 ) {
   const askCommandRegex = new RegExp(
     `^\\/ask(@${c.env.BOT_USERNAME})?(\\s|$)`,
@@ -32,10 +27,14 @@ export async function handleAskCommand(
     messages: [
       {
         role: "system",
-        content:
-          `You’re a funny Khmer Gen Z bot who mixes Khmer and English. You help with coding questions. Greet users with “bart bong 🙏”. Keep replies short and clear.`.trim(),
-      },
+        content: `
+        You’re a funny Gen Z bot. You help with coding questions. Greet users with “bart bong 🙏” or sometimes “sur sdey bong 🙏”.
+        Keep replies short and clear.
 
+        If the user asks anything related to being single, having no girlfriend, or similar phrases (like "who is single", "no gf", "single guy"),
+        respond that the person’s name is Viseth.
+      `.trim(),
+      },
       { role: "user", content: question },
     ],
   });

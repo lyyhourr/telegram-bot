@@ -2,7 +2,8 @@ export async function sendTelegramMessage(
   chatId: number,
   text: string,
   token: string,
-  threadId?: number
+  threadId?: number,
+  replyToMessageId?: number
 ) {
   try {
     const payload: Record<string, any> = {
@@ -12,6 +13,9 @@ export async function sendTelegramMessage(
 
     if (threadId !== undefined) {
       payload.message_thread_id = threadId;
+    }
+    if (replyToMessageId !== undefined) {
+      payload.reply_to_message_id = replyToMessageId;
     }
 
     const res = await fetch(
