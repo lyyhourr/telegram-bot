@@ -1,26 +1,53 @@
-import { fromHono } from "chanfana";
 import { Hono } from "hono";
-import { TaskCreate } from "./endpoints/taskCreate";
-import { TaskDelete } from "./endpoints/taskDelete";
-import { TaskFetch } from "./endpoints/taskFetch";
-import { TaskList } from "./endpoints/taskList";
+import { ALL_COMMANDS } from "./commands";
 
-// Start a Hono app
-const app = new Hono<{ Bindings: Env }>();
+const app = new Hono<{
+  Bindings: Cloudflare & {
+    TELEGRAM_TOKEN: string;
+  };
+}>();
 
-// Setup OpenAPI registry
-const openapi = fromHono(app, {
-	docs_url: "/",
+app.post("/telegram-webhook", async (c) => {
+  const TELEGRAM_TOKEN = c.env.TELEGRAM_TOKEN;
+
+  if (!TELEGRAM_TOKEN) {
+    console.error("Telegram token missing in environment");
+    return c.text("Internal Server Error", 500);
+  }
+  try {
+    const bodyText = await c.req.text();
+    const body = JSON.parse(bodyText);
+    const message = body.message;
+
+    if (!message?.text) {
+      return c.text("No message text");
+    }
+
+    const text = message.text.trim();
+    const chatId = message.chat.id;
+    const threadId = message.message_thread_id;
+
+    const command = ALL_COMMANDS.find((cmd) => {
+      if (typeof cmd.match === "string") {
+        return text.toLowerCase().startsWith(cmd.match.toLowerCase());
+      } else {
+        return cmd.match.test(text);
+      }
+    });
+
+    if (!command) {
+      console.log("Message does not match any known command - ignored");
+      return c.text("Ignored (no matching command)");
+    }
+
+    return await command.handler(c, text, chatId, TELEGRAM_TOKEN, threadId);
+  } catch (e) {
+    console.error("Error in webhook handler:", e);
+    return c.text("Error", 500);
+  }
 });
 
-// Register OpenAPI endpoints
-openapi.get("/api/tasks", TaskList);
-openapi.post("/api/tasks", TaskCreate);
-openapi.get("/api/tasks/:taskSlug", TaskFetch);
-openapi.delete("/api/tasks/:taskSlug", TaskDelete);
-
-// You may also register routes for non OpenAPI directly on Hono
-// app.get('/test', (c) => c.text('Hono!'))
-
-// Export the Hono app
-export default app;
+export default {
+  fetch: app.fetch,
+  // scheduled,
+};
