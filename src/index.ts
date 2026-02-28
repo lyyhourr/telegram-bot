@@ -1,9 +1,12 @@
 import { Hono } from "hono";
 import { ALL_COMMANDS } from "./commands";
+import { scheduled } from "./utils/scheduler";
 
 const app = new Hono<{
   Bindings: Cloudflare & {
     TELEGRAM_TOKEN: string;
+    BABYBIO_API_SECRET: string;
+    BABYBIO_BD_ALERT_URL: string;
   };
 }>();
 
@@ -49,5 +52,5 @@ app.post("/telegram-webhook", async (c) => {
 
 export default {
   fetch: app.fetch,
-  // scheduled,
+  scheduled,
 };
